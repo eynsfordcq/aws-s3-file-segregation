@@ -6,4 +6,7 @@
     <s3_dir>s3://bucket/dir</s3_dir>
     <s3_segregated_dir>s3://bucket/segregated/dir/%Y%m%d</s3_segregated_dir>
     <s3_error_dir>s3://bucket/segregated/dir/error</s3_error_dir>
+    <n_keys>20</n_keys>
+    <n_loops>10</n_loops>
+    <n_workers>10</n_workers>
 </config>

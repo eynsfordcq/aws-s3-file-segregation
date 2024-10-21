@@ -1,11 +1,11 @@
 import os
 import re 
 import boto3
-import json
 import argparse
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, wait
 
 # suppress logs by boto3
 logging.getLogger('boto3').setLevel(logging.CRITICAL)
@@ -123,6 +123,18 @@ def validate_refine_config(dict_config: dict, args) -> dict:
             "required": True,
             "type": "str",
         },
+        "n_keys": {
+            "required": False,
+            "type": "int"
+        },
+        "n_loops": {
+            "required": False,
+            "type": "int"
+        },
+        "n_workers": {
+            "required": False,
+            "type": "int"
+        },
     }
 
     for key, setting in config_keys.items():
@@ -186,6 +198,12 @@ def validate_refine_config(dict_config: dict, args) -> dict:
         # custom checks 
         if key == 'time_delay' and not dict_config.get(key): 
             dict_config[key] = 86400
+        if key == 'n_keys' and not dict_config.get(key):
+            dict_config[key] = 500
+        if key == 'n_loops' and not dict_config.get(key):
+            dict_config[key] = 10
+        if key == 'n_workers' and not dict_config.get(key):
+            dict_config[key] = os.cpu_count() // 2
     
     # args datetime 
     if not args.datetime:
@@ -296,27 +314,32 @@ def start_segregation(s3_client, dict_config):
     match_pattern = dict_config.get("match_pattern")
     datetime_format = dict_config.get("datetime_format")
     time_delay = dict_config.get("time_delay")
+    n_keys = dict_config.get("n_keys")
+    n_loops = dict_config.get("n_loops")
+    n_workers = dict_config.get("n_workers")
     default_date = datetime.now() - timedelta(seconds=time_delay)
     
     try:
-        for files in list_s3_get_files(s3_client, s3_dir, n_keys=20):
-            for file in files:
+        with ThreadPoolExecutor(max_workers=n_workers) as executor:
+            for files in list_s3_get_files(s3_client, s3_dir, n_keys=n_keys, n_loops=n_loops):
+                futures = []
+                for file in files:
+                    if not match_pattern:
+                        _date = default_date
+                    else: 
+                        _date = extract_datetime_from_filename(
+                            os.path.basename(file),
+                            match_pattern,
+                            datetime_format
+                        )
 
-                if not match_pattern:
-                    _date = default_date
-                else: 
-                    _date = extract_datetime_from_filename(
-                        os.path.basename(file),
-                        match_pattern,
-                        datetime_format
-                    )
-
-                if not _date:
-                    move_files_to_s3(s3_client, file, s3_error_dir)
-                    continue
-
-                _destination_dir = _date.strftime(s3_segregated_dir)
-                move_files_to_s3(s3_client, file, _destination_dir)
+                    if not _date:
+                        futures.append(executor.submit(move_files_to_s3, s3_client, file, s3_error_dir))
+                    else:
+                        _destination_dir = _date.strftime(s3_segregated_dir)
+                        futures.append(executor.submit(move_files_to_s3, s3_client, file, _destination_dir))
+                
+                wait(futures)
 
     except Exception as e:
         logging.error(f"{e}")
