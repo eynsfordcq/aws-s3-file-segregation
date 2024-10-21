@@ -100,11 +100,11 @@ def validate_refine_config(dict_config: dict, args) -> dict:
             "permission": "write",
         },
         "match_pattern": {
-            "required": True,
+            "required": False,
             "type": "str"
         },
         "datetime_format": {
-            "required": True,
+            "required": False,
             "type": "str"
         },      
         "time_delay": {
