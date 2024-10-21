@@ -1,0 +1,9 @@
+<config>
+    <log_file>/path/to/logs/%Y%m%d.log</log_file>
+    <match_pattern>^CHARGINGCDR_.*-.*-([0-9]{8})-.*-.*\.ber$</match_pattern>
+    <datetime_format>%Y%m%d</datetime_format>
+    <time_delay>86400</time_delay>
+    <s3_dir>s3://bucket/dir</s3_dir>
+    <s3_segregated_dir>s3://bucket/segregated/dir/%Y%m%d</s3_segregated_dir>
+    <s3_error_dir>s3://bucket/segregated/dir/error</s3_error_dir>
+</config>
