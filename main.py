@@ -104,7 +104,7 @@ def validate_refine_config(dict_config: dict, args) -> dict:
             "type": "str"
         },
         "datetime_format": {
-            "required": False,
+            "required": True,
             "type": "str"
         },      
         "time_delay": {
@@ -291,7 +291,8 @@ def extract_datetime_from_filename(filename, regex_pattern, datetime_format) -> 
         )
         return None
     
-    date_str = match.group(1)
+    # join groups together
+    date_str = ''.join([ str(match) for match in match.groups() ])
     
     try:
         date_obj = datetime.strptime(date_str, datetime_format)
@@ -301,7 +302,8 @@ def extract_datetime_from_filename(filename, regex_pattern, datetime_format) -> 
             f"filename: {filename} "
             f"regex : {regex_pattern} "
             f"matched_date_str: {date_str} "
-            f"datetime_format: {datetime_format}"
+            f"datetime_format: {datetime_format} "
+            f"error: {e}"
         )
         return None
     
